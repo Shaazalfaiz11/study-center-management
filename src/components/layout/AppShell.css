@@ -1,0 +1,24 @@
+.app-shell { min-height: 100vh; }
+
+.app-main {
+  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+}
+
+.app-content {
+  padding: var(--space-5);
+  padding-top: calc(var(--topbar-height) + var(--space-5));
+  max-width: var(--content-max);
+  min-height: 100vh;
+}
+
+@media (max-width: 1024px) {
+  .app-main { margin-left: 0; }
+}
+
+@media (max-width: 640px) {
+  .app-content {
+    padding: var(--space-4) var(--space-3);
+    padding-top: calc(var(--topbar-height) + var(--space-4));
+  }
+}

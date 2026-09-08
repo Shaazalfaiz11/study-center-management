@@ -1,0 +1,138 @@
+/* ============================================================
+   SEAT ASSIGNMENT WIZARD
+   Shared helpers live in styles/shared.css
+   ============================================================ */
+
+.assignment-flow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 720px;
+}
+
+/* ── Steps ── */
+.step-indicator { display: flex; align-items: center; gap: var(--space-2); list-style: none; flex-wrap: wrap; }
+
+.step { display: flex; align-items: center; gap: var(--space-2); }
+
+.step-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--gray-200);
+  color: var(--gray-500);
+  font-size: var(--font-sm);
+  font-weight: var(--fw-semibold);
+  flex-shrink: 0;
+}
+.step.is-current .step-marker { background: var(--color-primary); color: #fff; }
+.step.is-done .step-marker { background: var(--success-500); color: #fff; }
+
+.step-label { font-size: var(--font-base); color: var(--gray-500); }
+.step.is-current .step-label { color: var(--gray-900); font-weight: var(--fw-semibold); }
+.step.is-done .step-label { color: var(--gray-700); }
+.step-arrow { color: var(--gray-300); margin-left: var(--space-1); }
+
+.step-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-light);
+}
+
+/* ── Pick lists ── */
+.pick-list { display: flex; flex-direction: column; gap: var(--space-2); max-height: 380px; overflow-y: auto; }
+
+.pick-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+.pick-item:hover:not(.is-disabled) { border-color: var(--gray-400); background: var(--gray-50); }
+.pick-item.is-selected { border-color: var(--color-primary); background: var(--blue-50); box-shadow: 0 0 0 1px var(--color-primary); }
+.pick-item.is-disabled { opacity: 0.5; cursor: not-allowed; }
+
+.pick-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.4; }
+.pick-item-title { font-size: var(--font-md); font-weight: var(--fw-semibold); color: var(--gray-900); }
+.pick-item-sub { font-size: var(--font-sm); color: var(--gray-500); }
+.pick-item-side { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.4; }
+.pick-item-value { font-size: var(--font-base); font-weight: var(--fw-semibold); color: var(--gray-900); }
+
+/* ── Seat picker ── */
+.seat-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: var(--space-2);
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.seat-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: var(--space-2) 4px;
+  border: 1px solid var(--success-200);
+  border-radius: var(--radius-md);
+  background: var(--success-50);
+  cursor: pointer;
+  font: inherit;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.seat-pick:hover { border-color: var(--success-500); }
+.seat-pick.is-selected { border-color: var(--color-primary); background: var(--blue-50); box-shadow: 0 0 0 1px var(--color-primary); }
+
+.seat-pick-number { font-size: var(--font-base); font-weight: var(--fw-semibold); color: var(--gray-900); font-variant-numeric: tabular-nums; }
+.seat-pick-sub { font-size: 10px; color: var(--gray-500); }
+
+/* ── Confirm ── */
+.confirm-summary { margin-bottom: var(--space-4); }
+
+.check-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.check-line { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-base); }
+.check-line.is-ok { color: var(--success-700); }
+.check-line.is-warn { color: var(--warning-700); }
+.check-line.is-bad { color: var(--error-600); }
+
+/* ── Success ── */
+.assignment-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-4);
+  text-align: center;
+}
+.assignment-success-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background: var(--success-50);
+  color: var(--success-600);
+}
+.assignment-success-card { width: 100%; max-width: 400px; text-align: left; padding: var(--space-4); margin: var(--space-2) 0; }
+
+@media (max-width: 640px) {
+  .step-label { display: none; }
+  .step-indicator .step.is-current .step-label { display: inline; }
+}
