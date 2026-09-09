@@ -1,24 +1,19 @@
 import { Building2 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
 
 /**
- * Auth shell. The centre name comes from the database when it is
- * reachable, so a rebranded centre shows its own name on the sign-in
- * screen — but a settings row that does not exist yet must never block
- * anyone from signing in, hence the fallback.
+ * Auth shell.
+ *
+ * This used to read the centre name from the database to brand the sign-in
+ * screen. Under multi-tenancy that is no longer possible or meaningful: the
+ * visitor is anonymous, so RLS correctly returns nothing, and there is no
+ * single centre to name — the sign-in page is shared by every tenant.
+ *
+ * Per-tenant branding would need a subdomain or an invitation link to
+ * identify the organization before authentication. Product branding until
+ * then.
  */
-async function getCentre() {
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase.from('centre_settings').select('name, branch').eq('id', 1).single();
-    return data || null;
-  } catch {
-    return null;
-  }
-}
-
 export default async function AuthLayout({ children }) {
-  const centre = await getCentre();
+  const centre = null;
 
   return (
     <div className="auth-page">

@@ -47,19 +47,14 @@ export async function getUser() {
   return data.user;
 }
 
-/** The signed-in user plus their staff profile (role, name), or null. */
-export async function getUserProfile() {
-  const supabase = await createClient();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData?.user) return null;
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, full_name, email, role, phone, is_active, created_at')
-    .eq('id', userData.user.id)
-    .single();
-
-  return { user: userData.user, profile: profile || null };
-}
+/**
+ * The signed-in user, their identity profile, and the tenant they are
+ * acting in.
+ *
+ * Roles no longer live on `profiles` — a role is meaningless without
+ * naming the organization it applies to, so it comes from the
+ * organization_memberships row. See lib/tenant/context.js.
+ */
+export { getTenantContext, isOwner, isStaff } from '@/lib/tenant/context';
 
 export default createClient;

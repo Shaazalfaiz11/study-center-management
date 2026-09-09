@@ -1,10 +1,9 @@
 'use client';
 
 import { useActionState, useState, useEffect } from 'react';
-import Link from 'next/link';
 import {
   Building2, SlidersHorizontal, Users, CreditCard, Clock, BadgeCheck,
-  Save, Loader2, AlertCircle, CheckCircle2, ShieldAlert, Lock, ArrowRight, UserCog,
+  Save, Loader2, AlertCircle, CheckCircle2, ShieldAlert, Lock, UserCog,
 } from 'lucide-react';
 import { SectionCard, StatusBadge, Avatar } from '@/components/ui/Primitives';
 import { EmptyState } from '@/components/ui/StateViews';
@@ -22,6 +21,35 @@ const TABS = [
 
 const ROLE_LABELS = { owner: 'Owner', front_desk: 'Front Desk', facilities: 'Facilities' };
 
+const CURRENCIES = [
+  { value: 'INR', label: 'Indian Rupee (₹)' },
+  { value: 'USD', label: 'US Dollar ($)' },
+  { value: 'EUR', label: 'Euro (€)' },
+  { value: 'GBP', label: 'Pound Sterling (£)' },
+  { value: 'AED', label: 'UAE Dirham (AED)' },
+];
+
+const TIMEZONES = [
+  { value: 'Asia/Kolkata', label: 'Asia/Kolkata (IST)' },
+  { value: 'Asia/Dubai', label: 'Asia/Dubai (GST)' },
+  { value: 'Asia/Kathmandu', label: 'Asia/Kathmandu' },
+  { value: 'Asia/Colombo', label: 'Asia/Colombo' },
+  { value: 'UTC', label: 'UTC' },
+];
+
+/** Money in the centre's configured currency, falling back if it is unknown. */
+function formatMoney(amount, currency) {
+  try {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: currency || 'INR',
+      maximumFractionDigits: 0,
+    }).format(Number(amount) || 0);
+  } catch {
+    return `${currency || ''} ${Number(amount) || 0}`.trim();
+  }
+}
+
 export default function SettingsClient({ centre, team, plans, slots, me }) {
   const isOwner = me.role === 'owner';
   const visibleTabs = TABS.filter((t) => !t.ownerOnly || isOwner);
@@ -32,7 +60,7 @@ export default function SettingsClient({ centre, team, plans, slots, me }) {
       <EmptyState
         icon={AlertCircle}
         title="Settings row not found"
-        description="Run supabase/schema.sql in the Supabase SQL editor — it creates the centre_settings row this page reads."
+        description="The centre_settings row this page reads is missing. It is created by the settings migration, which seeds a single row with id = 1."
       />
     );
   }
@@ -59,10 +87,10 @@ export default function SettingsClient({ centre, team, plans, slots, me }) {
         )}
 
         {tab === 'centre' && <CentreForm centre={centre} canEdit={isOwner} />}
-        {tab === 'profile' && <ProfileForm profile={me.profile} />}
+        {tab === 'profile' && <ProfileForm profile={me.profile} role={me.role} />}
         {tab === 'rules' && isOwner && <RulesForm centre={centre} />}
         {tab === 'team' && isOwner && <TeamPanel team={team} meId={me.id} />}
-        {tab === 'catalogue' && <Catalogue plans={plans} slots={slots} />}
+        {tab === 'catalogue' && <Catalogue plans={plans} slots={slots} currency={centre.currency} />}
       </div>
     </div>
   );
@@ -134,6 +162,16 @@ function CentreForm({ centre, canEdit }) {
               <Field id="closing_time" label="Closing time" defaultValue={centre.closing_time} />
             </div>
 
+            <div className="form-row">
+              <SelectField id="currency" label="Currency" defaultValue={centre.currency} options={CURRENCIES} />
+              <SelectField id="timezone" label="Time zone" defaultValue={centre.timezone} options={TIMEZONES} />
+            </div>
+
+            {/* Carries the version this form was rendered from, so a save
+                that lands after someone else's is refused rather than
+                silently overwriting it. */}
+            <input type="hidden" name="updated_at" value={centre.updated_at || ''} />
+
             {canEdit && <div><SaveButton pending={pending} /></div>}
           </div>
         </fieldset>
@@ -143,7 +181,7 @@ function CentreForm({ centre, canEdit }) {
 }
 
 // ── My profile ──────────────────────────────────────────────
-function ProfileForm({ profile }) {
+function ProfileForm({ profile, role }) {
   const [state, action, pending] = useActionState(updateOwnProfile, {});
   useActionFeedback(state);
 
@@ -158,7 +196,7 @@ function ProfileForm({ profile }) {
             <div>
               <strong>{profile?.email}</strong>
               <span>
-                <StatusBadge status={profile?.role === 'owner' ? 'approved' : 'active'} label={ROLE_LABELS[profile?.role] || 'Staff'} dot={false} />
+                <StatusBadge status={role === 'owner' ? 'approved' : 'active'} label={ROLE_LABELS[role] || 'Staff'} dot={false} />
               </span>
             </div>
           </div>
@@ -213,6 +251,21 @@ function RulesForm({ centre }) {
             description="How long a student keeps their seat after their membership lapses before being marked inactive."
           />
 
+          <ListField
+            id="reminder_offsets"
+            label="Renewal reminder days"
+            defaultValue={(centre.reminder_offsets || []).join(', ')}
+            placeholder="7, 3, 1, 0"
+            description="Days before expiry to remind a student. 0 means on the expiry date itself. Comma separated."
+          />
+          <ListField
+            id="payment_methods"
+            label="Payment methods"
+            defaultValue={(centre.payment_methods || []).join(', ')}
+            placeholder="Cash, UPI, Card, Bank Transfer"
+            description="Offered when recording a payment. Removing one does not alter payments already recorded against it."
+          />
+
           <div className="callout callout-warning">
             <ShieldAlert size={15} className="callout-icon" />
             <div>
@@ -220,6 +273,8 @@ function RulesForm({ centre }) {
               being &ldquo;expiring&rdquo; simply drops off the renewals list.
             </div>
           </div>
+
+          <input type="hidden" name="updated_at" value={centre.updated_at || ''} />
 
           <div><SaveButton pending={pending} /></div>
         </div>
@@ -287,18 +342,21 @@ function TeamRow({ member, isSelf }) {
   );
 }
 
-// ── Plans & shifts (read-only here) ─────────────────────────
-function Catalogue({ plans, slots }) {
+// ── Plans & shifts ──────────────────────────────────────────
+// Read-only on purpose: editing plans and shifts belongs to the
+// memberships and slots modules, which are not built yet. The previous
+// "Manage" links pointed at /memberships/plans and /slots, neither of
+// which is a route — they 404'd. Better to say so than to link nowhere.
+function Catalogue({ plans, slots, currency }) {
   return (
     <div className="flex flex-col gap-4">
       <SectionCard
         title="Membership plans"
         subtitle={`${plans.length} configured`}
-        actions={<Link href="/memberships/plans" className="btn btn-ghost btn-sm">Manage <ArrowRight size={13} /></Link>}
         padded={false}
       >
         {plans.length === 0 ? (
-          <EmptyState compact icon={CreditCard} title="No plans yet" description="Run the schema file — it seeds seven standard plans." />
+          <EmptyState compact icon={CreditCard} title="No plans yet" description="The settings migration seeds seven standard plans." />
         ) : (
           <div className="table-scroll">
             <table>
@@ -308,7 +366,7 @@ function Catalogue({ plans, slots }) {
                   <tr key={p.id}>
                     <td className="cell-primary">{p.name}</td>
                     <td>{p.duration} {p.duration_unit}</td>
-                    <td className="cell-num" style={{ textAlign: 'right' }}>₹{Number(p.price).toLocaleString('en-IN')}</td>
+                    <td className="cell-num" style={{ textAlign: 'right' }}>{formatMoney(p.price, currency)}</td>
                     <td><StatusBadge status={p.is_active ? 'active' : 'inactive'} /></td>
                   </tr>
                 ))}
@@ -321,11 +379,10 @@ function Catalogue({ plans, slots }) {
       <SectionCard
         title="Shifts"
         subtitle={`${slots.filter((s) => s.is_active).length} active`}
-        actions={<Link href="/slots" className="btn btn-ghost btn-sm">Manage <ArrowRight size={13} /></Link>}
         padded={false}
       >
         {slots.length === 0 ? (
-          <EmptyState compact icon={Clock} title="No shifts yet" description="Run the schema file — it seeds the standard shifts." />
+          <EmptyState compact icon={Clock} title="No shifts yet" description="The settings migration seeds the standard shifts." />
         ) : (
           <div className="table-scroll">
             <table>
@@ -356,6 +413,41 @@ function Field({ id, label, defaultValue, type = 'text', required }) {
         {label} {required && <span className="required">*</span>}
       </label>
       <input id={id} name={id} type={type} className="form-input" defaultValue={defaultValue || ''} required={required} />
+    </div>
+  );
+}
+
+function SelectField({ id, label, defaultValue, options }) {
+  return (
+    <div className="form-group">
+      <label className="form-label" htmlFor={id}>{label}</label>
+      <select id={id} name={id} className="form-select" defaultValue={defaultValue || options[0].value}>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/** Comma-separated list. Parsed and validated server-side. */
+function ListField({ id, label, defaultValue, placeholder, description }) {
+  return (
+    <div className="rule-field">
+      <div className="rule-field-head">
+        <label className="form-label" htmlFor={id}>{label}</label>
+        <div className="rule-field-input">
+          <input
+            id={id}
+            name={id}
+            type="text"
+            className="form-input"
+            defaultValue={defaultValue}
+            placeholder={placeholder}
+          />
+        </div>
+      </div>
+      <p className="rule-field-desc">{description}</p>
     </div>
   );
 }

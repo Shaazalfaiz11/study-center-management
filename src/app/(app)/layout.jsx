@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getUserProfile } from '@/lib/supabase/server';
+import { getTenantContext } from '@/lib/tenant/context';
 import AppShell from '@/components/layout/AppShell';
 
 /**
@@ -8,17 +8,26 @@ import AppShell from '@/components/layout/AppShell';
  * thing standing between a visitor and the data.
  */
 export default async function AppLayout({ children }) {
-  const result = await getUserProfile();
-  if (!result?.user) redirect('/login');
+  const ctx = await getTenantContext();
+  if (!ctx?.user) redirect('/login');
 
-  const { user, profile } = result;
+  // A session alone is not authorisation. Without an active membership
+  // the tenant helpers return false and RLS yields nothing, so the app
+  // would render as an empty, broken shell.
+  //
+  // This redirects rather than rendering a message in place: returning
+  // markup from a layout does not stop the child page from rendering, so
+  // the protected page would still run its queries and ship its payload.
+  if (!ctx.organization || !ctx.role) redirect('/account-blocked');
 
   const account = {
-    id: user.id,
-    email: user.email,
-    name: profile?.full_name || user.email?.split('@')[0] || 'Staff',
-    role: profile?.role || 'front_desk',
-    isActive: profile?.is_active ?? true,
+    id: ctx.user.id,
+    email: ctx.user.email,
+    name: ctx.profile?.full_name || ctx.user.email?.split('@')[0] || 'Staff',
+    role: ctx.role,
+    isActive: true,
+    organization: ctx.organization,
+    centre: ctx.centre,
   };
 
   return <AppShell account={account}>{children}</AppShell>;

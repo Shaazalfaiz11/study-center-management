@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-/** Routes reachable without a session. Everything else redirects to /login. */
-const PUBLIC_ROUTES = ['/login', '/signup', '/auth', '/forgot-password', '/reset-password'];
+/**
+ * Routes reachable without a session. Everything else redirects to /login.
+ *
+ * /account-blocked is listed because it is reached *with* a valid session
+ * (a user whose profile is missing or deactivated). It must not be gated,
+ * or the protected layout's redirect to it would bounce straight back.
+ */
+const PUBLIC_ROUTES = ['/login', '/signup', '/auth', '/forgot-password', '/reset-password', '/account-blocked'];
 
 const isPublic = (pathname) => PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 
