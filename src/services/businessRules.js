@@ -50,6 +50,49 @@ export const daysBetween = (from, to) => {
   return Math.round((b - a) / 86400000);
 };
 
+export const startOfMonth = (iso = todayISO()) => {
+  const d = parseISO(iso) || new Date();
+  return toISO(new Date(d.getFullYear(), d.getMonth(), 1));
+};
+
+/** Every date in an inclusive range, oldest first. Capped so a wide range cannot blow up a chart. */
+export const eachDay = (from, to, max = 92) => {
+  const days = [];
+  const span = Math.min(daysBetween(from, to), max);
+  for (let i = 0; i <= span; i++) days.push(addDays(from, i));
+  return days;
+};
+
+export const RANGE_PRESETS = [
+  { key: 'today', label: 'Today' },
+  { key: 'week', label: 'This Week' },
+  { key: 'month', label: 'This Month' },
+  { key: 'custom', label: 'Custom' },
+];
+
+/**
+ * Resolve a preset into a concrete {from, to, label}.
+ * "Week" is the trailing seven days, which is what an owner means when
+ * they ask how the week is going mid-week.
+ */
+export const rangeFor = (preset, custom = {}) => {
+  const today = todayISO();
+  switch (preset) {
+    case 'week':
+      return { from: addDays(today, -6), to: today, label: 'Last 7 days', preset };
+    case 'month':
+      return { from: startOfMonth(today), to: today, label: 'This month', preset };
+    case 'custom': {
+      const from = custom.from || addDays(today, -6);
+      const to = custom.to || today;
+      return { from: from <= to ? from : to, to: from <= to ? to : from, label: 'Custom range', preset };
+    }
+    case 'today':
+    default:
+      return { from: today, to: today, label: 'Today', preset };
+  }
+};
+
 export const daysUntil = (iso) => daysBetween(todayISO(), iso);
 export const daysSince = (iso) => daysBetween(iso, todayISO());
 

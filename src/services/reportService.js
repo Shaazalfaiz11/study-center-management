@@ -4,11 +4,153 @@
 // ============================================================
 
 import { getState, respond } from './store';
-import { todayISO, daysUntil, daysSince, formatDate, formatDateLong, formatCurrency, isPotentiallyInactive, INACTIVE_ATTENDANCE_DAYS } from './businessRules';
+import {
+  todayISO,
+  daysUntil,
+  daysSince,
+  formatDate,
+  formatDateLong,
+  formatCurrency,
+  isPotentiallyInactive,
+  INACTIVE_ATTENDANCE_DAYS,
+  rangeFor,
+  eachDay,
+} from './businessRules';
 
 const sum = (rows, key) => rows.reduce((total, row) => total + (Number(row[key]) || 0), 0);
+const inRange = (date, from, to) => date >= from && date <= to;
 
 export const reportService = {
+  /**
+   * Everything the dashboard shows, for a chosen date range.
+   *
+   * Money, renewals and admissions are measured across the range.
+   * Seats, memberships and the operations queue are "right now" —
+   * a stale seat map would be worse than useless — and the response
+   * says which is which so the UI can label them honestly.
+   */
+  getDashboardSummary: (preset = 'today', custom = {}) =>
+    respond(() => {
+      const state = getState();
+      const { students, desks, attendance, payments, expenses, slots, leaves, shiftChanges, maintenance, waitlist, auditLog } = state;
+      const range = rangeFor(preset, custom);
+      const { from, to } = range;
+      const today = todayISO();
+      const days = eachDay(from, to);
+      const isSingleDay = from === to;
+
+      // ── Money across the range ─────────────────────────────
+      const rangePayments = payments.filter((p) => p.status === 'completed' && inRange(p.date, from, to));
+      const rangeExpenses = expenses.filter((e) => inRange(e.date, from, to));
+      const collected = sum(rangePayments, 'amount');
+      const spent = sum(rangeExpenses, 'amount');
+
+      const trend = days.map((date) => ({
+        date,
+        collected: payments.filter((p) => p.status === 'completed' && p.date === date).reduce((a, p) => a + p.amount, 0),
+      }));
+
+      // ── Attendance ─────────────────────────────────────────
+      const rangeAttendance = attendance.filter((a) => inRange(a.date, from, to));
+      const latestDay = attendance.filter((a) => a.date === (isSingleDay ? from : to));
+      const presentOn = (rows) => rows.filter((a) => a.status === 'present' || a.status === 'late').length;
+      const dayCount = Math.max(1, days.length);
+      const avgPresent = Math.round(presentOn(rangeAttendance) / dayCount);
+
+      // ── Seats, right now ───────────────────────────────────
+      const seatCount = (status) => desks.filter((d) => d.status === status).length;
+      const inUse = seatCount('assigned') + seatCount('occupied');
+      const outOfService = seatCount('maintenance') + seatCount('blocked');
+
+      // ── Students & memberships ─────────────────────────────
+      const active = students.filter((s) => s.status === 'active').length;
+      const onLeave = students.filter((s) => s.status === 'on_leave').length;
+      const inactive = students.filter((s) => s.status === 'inactive').length;
+      const membership = (status) => students.filter((s) => s.membershipStatus === status).length;
+
+      const renewals = auditLog.filter((a) => a.action === 'membership_renewed' && inRange(a.date, from, to)).length;
+      const admissions = students.filter((s) => inRange(s.joinDate, from, to)).length;
+
+      // ── Outstanding, right now ─────────────────────────────
+      const overdueStudents = students.filter((s) => s.paymentStatus === 'overdue');
+      const dueTodayStudents = students.filter((s) => s.paymentStatus === 'due');
+
+      return {
+        range,
+        isSingleDay,
+        asOf: today,
+
+        students: {
+          total: students.length,
+          active,
+          onLeave,
+          inactive,
+          admissions,
+        },
+
+        attendance: {
+          present: presentOn(latestDay),
+          absent: latestDay.filter((a) => a.status === 'absent').length,
+          expected: latestDay.length,
+          rate: latestDay.length ? Math.round((presentOn(latestDay) / latestDay.length) * 100) : 0,
+          avgPresent,
+          dayCount,
+        },
+
+        seats: {
+          total: desks.length,
+          inUse,
+          available: seatCount('available'),
+          temporarilyReleased: seatCount('temporarily_released'),
+          reserved: seatCount('reserved'),
+          outOfService,
+          occupancyRate: desks.length ? Math.round((inUse / desks.length) * 100) : 0,
+        },
+
+        finance: {
+          collected,
+          spent,
+          net: collected - spent,
+          paymentCount: rangePayments.length,
+          outstanding: sum(students, 'outstanding'),
+          overdueCount: overdueStudents.length,
+          overdueAmount: sum(overdueStudents, 'outstanding'),
+          dueTodayCount: dueTodayStudents.length,
+          dueTodayAmount: sum(dueTodayStudents, 'outstanding'),
+          trend,
+        },
+
+        memberships: {
+          active: membership('active'),
+          expiring: membership('expiring'),
+          expired: membership('expired'),
+          paused: membership('paused'),
+          renewals,
+        },
+
+        operations: {
+          pendingShiftChanges: shiftChanges.filter((r) => r.status === 'pending').length,
+          approvedShiftChanges: shiftChanges.filter((r) => r.status === 'approved').length,
+          activeLeaves: leaves.filter((l) => l.status === 'active').length,
+          upcomingLeaves: leaves.filter((l) => l.status === 'upcoming').length,
+          openMaintenance: maintenance.filter((m) => m.status !== 'resolved').length,
+          highMaintenance: maintenance.filter((m) => m.status !== 'resolved' && (m.priority === 'high' || m.priority === 'critical')).length,
+          waitlist: waitlist.length,
+          idleSeats: students.filter(isPotentiallyInactive).length,
+        },
+
+        shifts: slots
+          .filter((s) => s.active)
+          .map((slot) => ({
+            id: slot.id,
+            name: slot.name,
+            assigned: slot.assigned,
+            capacity: slot.capacity,
+            rate: slot.capacity ? Math.round((slot.assigned / slot.capacity) * 100) : 0,
+          })),
+      };
+    }),
+
   /**
    * The owner's morning read: one page covering students, seats,
    * money and everything waiting for a decision.
