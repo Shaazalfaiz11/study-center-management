@@ -1,3 +1,5 @@
+'use client';
+
 import { useMemo, useState, useEffect, useId } from 'react';
 import { ChevronDown, ChevronUp, ChevronsUpDown, Search, X, Download, SlidersHorizontal } from 'lucide-react';
 import { SkeletonTable, EmptyState, ErrorState } from './StateViews';

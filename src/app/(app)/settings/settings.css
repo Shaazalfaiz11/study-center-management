@@ -1,0 +1,113 @@
+/* Settings layout */
+.settings-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  position: sticky;
+  top: calc(var(--topbar-height) + var(--space-5));
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.5rem var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  font: inherit;
+  font-size: var(--font-base);
+  font-weight: var(--fw-medium);
+  color: var(--gray-600);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.settings-nav-item:hover { background: var(--gray-100); color: var(--gray-900); }
+.settings-nav-item.is-active { background: var(--blue-50); color: var(--blue-700); font-weight: var(--fw-semibold); }
+
+.settings-content { min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+
+.settings-fieldset { border: none; padding: 0; margin: 0; min-width: 0; }
+.settings-fieldset:disabled { opacity: 0.75; }
+
+.settings-feedback {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-base);
+  border: 1px solid;
+}
+.settings-feedback.is-error { background: var(--error-50); border-color: var(--error-200); color: var(--error-700); }
+.settings-feedback.is-success { background: var(--success-50); border-color: var(--success-200); color: var(--success-700); }
+
+.settings-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--gray-50);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+}
+.settings-identity div { display: flex; flex-direction: column; gap: 4px; }
+.settings-identity strong { font-size: var(--font-base); color: var(--gray-900); }
+
+/* Business rules */
+.rule-field { padding-bottom: var(--space-4); border-bottom: 1px solid var(--color-border-light); }
+.rule-field:last-of-type { border-bottom: none; }
+.rule-field-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+.rule-field-input { display: flex; align-items: center; gap: var(--space-2); }
+.rule-field-input .form-input { width: 84px; text-align: right; font-variant-numeric: tabular-nums; }
+.rule-field-unit { font-size: var(--font-sm); color: var(--gray-500); white-space: nowrap; }
+.rule-field-desc { font-size: var(--font-sm); color: var(--gray-500); line-height: 1.55; margin-top: 4px; max-width: 60ch; }
+
+/* Team */
+.team-list { list-style: none; }
+.team-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-light);
+  flex-wrap: wrap;
+}
+.team-row:last-child { border-bottom: none; }
+.team-row-main { flex: 1; min-width: 160px; display: flex; flex-direction: column; line-height: 1.35; }
+.team-row-name { font-size: var(--font-base); font-weight: var(--fw-medium); color: var(--gray-900); display: flex; align-items: center; gap: var(--space-2); }
+.team-row-you {
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--blue-100);
+  color: var(--blue-700);
+}
+.team-row-email { font-size: var(--font-sm); color: var(--gray-500); }
+.team-row-form { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+@media (max-width: 900px) {
+  .settings-layout { grid-template-columns: 1fr; }
+  .settings-nav {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: var(--space-1);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+    scrollbar-width: none;
+  }
+  .settings-nav::-webkit-scrollbar { display: none; }
+  .settings-nav-item { white-space: nowrap; }
+}

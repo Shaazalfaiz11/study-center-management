@@ -1,3 +1,5 @@
+'use client';
+
 import { AlertTriangle, Inbox, RefreshCw } from 'lucide-react';
 
 /** Skeleton block — used everywhere loading placeholders are needed. */

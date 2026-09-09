@@ -1,3 +1,5 @@
+'use client';
+
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { Skeleton } from './StateViews';
 
